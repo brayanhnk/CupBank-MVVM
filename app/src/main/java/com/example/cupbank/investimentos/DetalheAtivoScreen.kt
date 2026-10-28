@@ -57,7 +57,9 @@ fun DetalheAtivoScreen(
     val context = LocalContext.current
     val ativo = state.ativoPorTicker(ticker)
 
-    LaunchedEffect(ticker) { if (state.ativoPorTicker(ticker) != null) state.selecionar(ticker) }
+    LaunchedEffect(Unit) { if (!state.carregado) state.carregar() }
+
+    LaunchedEffect(ticker, state.carregado) { if (state.ativoPorTicker(ticker) != null) state.selecionar(ticker) }
 
     Scaffold(
         containerColor = CupBankBackground,
@@ -85,7 +87,9 @@ fun DetalheAtivoScreen(
             )
         }
     ) { innerPadding ->
-        if (ativo == null) {
+        if (!state.carregado) {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
+        } else if (ativo == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

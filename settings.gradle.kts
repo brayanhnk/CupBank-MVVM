@@ -1,3 +1,14 @@
+
+try {
+    val processEnvironment = Class.forName("java.lang.ProcessEnvironment")
+    val theEnvironmentField = processEnvironment.getDeclaredField("theEnvironment").apply { isAccessible = true }
+    @Suppress("UNCHECKED_CAST")
+    (theEnvironmentField.get(null) as? MutableMap<String, String>)?.remove("ANDROID_PREFS_ROOT")
+    val theCaseInsensitiveEnvironmentField = processEnvironment.getDeclaredField("theCaseInsensitiveEnvironment").apply { isAccessible = true }
+    @Suppress("UNCHECKED_CAST")
+    (theCaseInsensitiveEnvironmentField.get(null) as? MutableMap<String, String>)?.remove("ANDROID_PREFS_ROOT")
+} catch (_: Throwable) {}
+
 pluginManagement {
     repositories {
         google {
@@ -24,4 +35,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "CupBank"
 include(":app")
- 

@@ -1,33 +1,44 @@
 package com.example.cupbank
 
+import android.util.Log
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import com.example.cupbank.data.MovimentoDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@Entity(tableName = "movimentos")
 data class Movimento(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val titulo: String,
     val detalhe: String,
     val valor: Double,
     val data: String
 )
 
-class BancoState {
+private const val TAG_BANCO = "BancoState"
 
-    var saldo by mutableDoubleStateOf(3284.50)
+class BancoState(private val dao: MovimentoDao) {
+
+    var movimentos by mutableStateOf<List<Movimento>>(emptyList())
         private set
 
-    val movimentos = mutableStateListOf(
-        Movimento(3, "PIX recebido", "De: Maria Souza", 250.00, "07/10"),
-        Movimento(2, "Conta de luz", "Pagamento", -142.30, "06/10"),
-        Movimento(1, "Salário", "Depósito", 2800.00, "05/10")
-    )
+    val saldo: Double get() = SALDO_BASE + movimentos.sumOf { it.valor }
 
-    private var proximoId = 4
+    suspend fun carregar() {
+        try {
+            movimentos = dao.buscarTodos()
+        } catch (e: Exception) {
+            Log.e(TAG_BANCO, "Erro ao carregar o extrato", e)
+        }
+    }
 
     fun receberPix(origem: String, valor: Double) {
         registrar("PIX recebido", "De: $origem", valor)
@@ -53,8 +64,19 @@ class BancoState {
     }
 
     private fun registrar(titulo: String, detalhe: String, valor: Double) {
-        saldo += valor
         val agora = SimpleDateFormat("dd/MM HH:mm", Locale.forLanguageTag("pt-BR")).format(Date())
-        movimentos.add(0, Movimento(proximoId++, titulo, detalhe, valor, agora))
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                dao.inserir(Movimento(titulo = titulo, detalhe = detalhe, valor = valor, data = agora))
+            } catch (e: Exception) {
+                Log.e(TAG_BANCO, "Erro ao salvar movimento", e)
+            }
+            carregar()
+        }
+    }
+
+    private companion object {
+
+        const val SALDO_BASE = 376.80
     }
 }

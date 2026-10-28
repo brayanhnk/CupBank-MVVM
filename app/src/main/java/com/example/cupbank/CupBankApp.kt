@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -15,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.cupbank.data.AppDatabase
 import com.example.cupbank.investimentos.DetalheAtivoScreen
 import com.example.cupbank.investimentos.InvestimentosState
 import com.example.cupbank.investimentos.InvestirScreen
@@ -23,9 +26,13 @@ import com.example.cupbank.investimentos.InvestirScreen
 fun CupBankApp() {
     val navController = rememberNavController()
 
-    val banco = remember { BancoState() }
-    val cartao = remember { CartaoState() }
-    val investimentos = remember { InvestimentosState() }
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getDatabase(context) }
+    val banco = remember { BancoState(db.movimentoDao()) }
+    val cartao = remember { CartaoState(db.transacaoCartaoDao()) }
+    val investimentos = remember { InvestimentosState(db.ativoDao(), db.ordemDao()) }
+
+    LaunchedEffect(Unit) { banco.carregar() }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val rotaAtual = backStackEntry?.destination?.route
