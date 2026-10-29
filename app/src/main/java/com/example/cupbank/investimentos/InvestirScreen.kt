@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +67,11 @@ fun InvestirScreen(
 ) {
     val context = LocalContext.current
     var filtro by remember { mutableStateOf<TipoAtivo?>(null) }
+    var ativoSelecionadoNoMenu by remember { mutableStateOf<Ativo?>(null) }
     var ativoParaRemover by remember { mutableStateOf<Ativo?>(null) }
+    var ativoParaEditar by remember { mutableStateOf<Ativo?>(null) }
+
+    LaunchedEffect(Unit) { state.carregar() }
 
     val visiveis = state.ativos.filter { filtro == null || it.tipo == filtro }
     val selecionado = state.ativoSelecionado
@@ -282,18 +287,44 @@ fun InvestirScreen(
                         state.selecionar(ativo.ticker)
                         onAbrirDetalhe(ativo.ticker)
                     },
-                    onLongClick = { ativoParaRemover = ativo }
+                    onLongClick = { ativoSelecionadoNoMenu = ativo }
                 )
             }
         }
 
         item {
             Text(
-                text = "Segure um ativo para removê-lo da lista.",
+                text = "Segure um ativo para editá-lo ou removê-lo da lista.",
                 color = CupBankTextSecondary,
                 fontSize = 11.sp
             )
         }
+    }
+
+    ativoSelecionadoNoMenu?.let { ativo ->
+        AlertDialog(
+            onDismissRequest = { ativoSelecionadoNoMenu = null },
+            containerColor = CupBankSurface,
+            titleContentColor = CupBankTextPrimary,
+            title = { Text("${ativo.ticker} · ${ativo.nome}") },
+            confirmButton = {
+                TextButton(onClick = {
+                    ativoParaEditar = ativo
+                    ativoSelecionadoNoMenu = null
+                }) { Text("Editar", color = CupBankPurpleLight, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        ativoParaRemover = ativo
+                        ativoSelecionadoNoMenu = null
+                    }) { Text("Remover", color = CorNegativo) }
+                    TextButton(onClick = { ativoSelecionadoNoMenu = null }) {
+                        Text("Cancelar", color = CupBankTextSecondary)
+                    }
+                }
+            }
+        )
     }
 
     ativoParaRemover?.let { ativo ->
@@ -306,7 +337,7 @@ fun InvestirScreen(
             text = { Text("O ativo sai da lista e as ordens dele também serão removidas da carteira.") },
             confirmButton = {
                 TextButton(onClick = {
-                    state.removerAtivo(ativo.ticker)
+                    state.removerAtivo(ativo)
                     ativoParaRemover = null
                     Toast.makeText(context, "${ativo.ticker} removido.", Toast.LENGTH_SHORT).show()
                 }) { Text("Remover", color = CorNegativo) }
@@ -315,6 +346,21 @@ fun InvestirScreen(
                 TextButton(onClick = { ativoParaRemover = null }) {
                     Text("Cancelar", color = CupBankPurpleLight)
                 }
+            }
+        )
+    }
+
+    ativoParaEditar?.let { ativo ->
+        NovoAtivoDialog(
+            ativoExistente = ativo,
+            onCancelar = { ativoParaEditar = null },
+            onSalvar = { _, nome, preco, tipo ->
+                val erro = state.editarAtivo(ativo, nome, preco, tipo)
+                if (erro == null) {
+                    ativoParaEditar = null
+                    Toast.makeText(context, "Ativo atualizado.", Toast.LENGTH_SHORT).show()
+                }
+                erro
             }
         )
     }
@@ -412,12 +458,17 @@ private fun AtivoCard(
 private fun NovoAtivoDialog(
     onCancelar: () -> Unit,
 
+    ativoExistente: Ativo? = null,
+
     onSalvar: (ticker: String, nome: String, preco: Double?, tipo: TipoAtivo) -> String?
 ) {
-    var ticker by remember { mutableStateOf("") }
-    var nome by remember { mutableStateOf("") }
-    var precoTexto by remember { mutableStateOf("") }
-    var tipo by remember { mutableStateOf(TipoAtivo.ACAO) }
+    val editando = ativoExistente != null
+    var ticker by remember { mutableStateOf(ativoExistente?.ticker ?: "") }
+    var nome by remember { mutableStateOf(ativoExistente?.nome ?: "") }
+    var precoTexto by remember {
+        mutableStateOf(ativoExistente?.preco?.toString() ?: "")
+    }
+    var tipo by remember { mutableStateOf(ativoExistente?.tipo ?: TipoAtivo.ACAO) }
     var erro by remember { mutableStateOf<String?>(null) }
 
     val camposColors = OutlinedTextFieldDefaults.colors(
@@ -434,7 +485,7 @@ private fun NovoAtivoDialog(
         onDismissRequest = onCancelar,
         containerColor = CupBankSurface,
         titleContentColor = CupBankTextPrimary,
-        title = { Text("Novo ativo") },
+        title = { Text(if (editando) "Editar ativo" else "Novo ativo") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
@@ -442,6 +493,7 @@ private fun NovoAtivoDialog(
                     onValueChange = { ticker = it.uppercase().take(8) },
                     label = { Text("Código (ex: WEGE3)") },
                     singleLine = true,
+                    enabled = !editando,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                     colors = camposColors
                 )
@@ -472,7 +524,7 @@ private fun NovoAtivoDialog(
             TextButton(onClick = {
                 val preco = precoTexto.replace(',', '.').toDoubleOrNull()
                 erro = onSalvar(ticker, nome, preco, tipo)
-            }) { Text("Adicionar", color = CupBankPurpleLight, fontWeight = FontWeight.Bold) }
+            }) { Text(if (editando) "Salvar" else "Adicionar", color = CupBankPurpleLight, fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) { Text("Cancelar", color = CupBankTextSecondary) }

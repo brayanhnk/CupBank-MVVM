@@ -1,335 +1,101 @@
-# 🏦 CupBank — Aplicativo Bancário Android
+# CupBank — Como o Room funciona e o que foi adicionado (Trabalho 3)
 
-<div align="center">
+Este arquivo explica só a parte nova: o banco de dados local. O README.md principal continua sendo o mapa do app.
 
-![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF?logo=kotlin&logoColor=white)
-![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.02.01-4285F4?logo=jetpackcompose&logoColor=white)
-![Material 3](https://img.shields.io/badge/Material%203-Yes-757575?logo=materialdesign&logoColor=white)
-![Min SDK](https://img.shields.io/badge/Min%20SDK-24-3DDC84?logo=android&logoColor=white)
-![Target SDK](https://img.shields.io/badge/Target%20SDK-37-3DDC84?logo=android&logoColor=white)
+## 1. A ideia em uma frase
 
-**Aplicativo de banco fictício completo desenvolvido em Kotlin + Jetpack Compose com Material 3**
+No Trabalho 2 as listas viviam em `mutableStateListOf` (memória) e sumiam ao fechar o app.
+Agora **o banco SQLite (via Room) é a fonte da verdade**: a tela só mostra uma cópia do que está no banco.
 
-</div>
-
----
-
-## 📱 Sobre o Projeto
-
-CupBank é um aplicativo bancário moderno e completo que simula as principais funcionalidades de um banco digital. Desenvolvido como trabalho acadêmico (Trabalho 2 - Navegação + Listas + Detalhes), o app demonstra implementação de navegação complexa, gerenciamento de estado e integração entre múltiplas telas.
-
-**⚠️ Nota:** Todos os dados vivem apenas na memória usando `mutableStateListOf` e `mutableStateOf`, conforme especificação do projeto acadêmico.
-
----
-
-## ✨ Funcionalidades Principais
-
-### 💰 Conta Bancária
-- **Saldo em tempo real** com atualização automática
-- **Extrato completo** de todas as transações
-- **Transferências PIX** com validação de chave e saldo
-- **Recebimento de PIX** com atualização instantânea do saldo
-
-### 💳 Cartão de Crédito
-- **Gerenciamento de transações** do cartão
-- **Adicionar gastos** manualmente
-- **Remover transações** indesejadas
-- **Pagamento de fatura** integrado com o saldo da conta
-- **Detalhamento individual** de cada transação
-
-### 📈 Investimentos
-- **Listagem de ativos** (Ações e Fundos)
-- **Adicionar novos ativos** com ticker, nome, preço e tipo
-- **Remover ativos** segurando o item
-- **Detalhamento completo** de cada ativo:
-  - Preço de abertura calculado
-  - Variação do dia em R$
-  - Peso na carteira
-  - Gestão de ordens (compra/venda)
-  - Confirmação/cancelamento de ordens
-
-### 👤 Perfil
-- Informações do usuário
-- Acesso rápido aos cartões
-- Configurações da conta
-
----
-
-## 🚀 Como Rodar o Projeto
-
-### 📋 Pré-requisitos
-
-- **Android Studio** Ladybug ou superior (recomendado: versão mais recente)
-- **JDK 11** ou superior
-- **SDK do Android** com API Level 24+
-- **Emulador Android** ou **dispositivo físico** (Android 7.0+)
-- **Conexão com internet** (apenas para o primeiro Gradle sync)
-
-### 🔧 Passos para Instalação
-
-#### 1️⃣ Clone o Repositório
-
-```bash
-git clone https://github.com/seu-usuario/CupBank.git
-cd CupBank/CupBank-A2
-```
-
-#### 2️⃣ Abra no Android Studio
-
-1. Abra o Android Studio
-2. Vá em **File → Open**
-3. Selecione a pasta `CupBank-A2` (que contém o arquivo `settings.gradle.kts`)
-4. Aguarde o **Gradle Sync** terminar (pode levar alguns minutos na primeira vez)
-
-#### 3️⃣ Configure o Dispositivo
-
-**Opção A - Emulador:**
-1. Vá em **Device Manager** (ícone de celular na barra lateral)
-2. Crie um novo dispositivo virtual (recomendado: Pixel 6, API 34+)
-3. Inicie o emulador
-
-**Opção B - Dispositivo Físico:**
-1. Ative **Opções do Desenvolvedor** no seu Android
-2. Habilite **Depuração USB**
-3. Conecte via USB e autorize o computador
-
-#### 4️⃣ Execute o App
-
-1. Selecione o dispositivo/emulador na barra de ferramentas
-2. Clique no botão **Run** ▶️ (ou pressione `Shift + F10`)
-3. Aguarde a compilação e instalação
-
-### 🖥️ Executar via Linha de Comando
-
-```bash
-# Conceder permissão ao gradlew (Linux/Mac)
-chmod +x gradlew
-
-# Compilar o projeto
-./gradlew build
-
-# Instalar no dispositivo conectado
-./gradlew installDebug
-
-# Ou compilar e instalar em um comando
-./gradlew assembleDebug && adb install app/build/outputs/apk/debug/app-debug.apk
-```
-
-### 🐛 Solução de Problemas
-
-| Problema | Solução |
-|----------|---------|
-| **Gradle Sync falhou** | Verifique conexão com internet, delete a pasta `.gradle` e sincronize novamente |
-| **SDK não encontrado** | Vá em **File → Project Structure** e configure o SDK correto |
-| **App não compila** | Execute **Build → Clean Project** depois **Build → Rebuild Project** |
-| **Emulador lento** | Certifique-se de ter aceleração de hardware habilitada (HAXM/KVM) |
-
----
-
-## 🏗️ Arquitetura e Estrutura
-
-### 🗺️ Mapa de Navegação (8 Telas)
-
-| Tela | Rota | Acesso |
-|------|------|--------|
-| **🏠 Início** | `inicio` | Aba **Início** (tela inicial) |
-| **📊 Extrato** | `extrato` | Aba **Extrato** ou "Ver tudo" no Início |
-| **📈 Investir** | `investir` | Aba **Investir** ou botão central **+** |
-| **📉 Detalhe do Ativo** | `detalhe_ativo/{ticker}` | Tocar num ativo da lista |
-| **👤 Perfil** | `perfil` | Aba **Perfil** |
-| **💳 Cartão** | `cartao` | Perfil → **Cartões** ou Início → **Pagar** |
-| **🧾 Detalhe da Transação** | `cartao_transacao/{id}` | Tocar numa transação do cartão |
-| **💸 Transferência PIX** | `pix` | Início → **PIX** ou **Transferir** |
-
-**📍 Nota:** As rotas ficam centralizadas no objeto `Rotas` (`Rotas.kt`) e o `NavHost` em `CupBankApp.kt`.
-
-### 📂 Estrutura do Código
+## 2. O caminho de um dado
 
 ```
-app/src/main/java/com/example/cupbank/
-├── MainActivity.kt                    # Activity principal
-├── CupBankApp.kt                      # NavHost e configuração de navegação
-├── Rotas.kt                           # Definição de todas as rotas
-├── CupBankBottomBar.kt               # Barra de navegação inferior
-├── Banco.kt                           # Estado do banco (saldo + extrato)
-├── BankAppScreen.kt                   # Tela inicial
-├── ExtratoScreen.kt                   # Tela de extrato completo
-├── TelaTransferenciaPix.kt           # Tela de transferência PIX
-├── TelaCartao.kt                      # Tela do cartão + detalhe transação
-├── ProfileScreen.kt                   # Tela de perfil
-├── investimentos/
-│   ├── InvestirScreen.kt             # Lista de ativos
-│   ├── DetalheAtivoScreen.kt         # Detalhamento de ativo
-│   ├── InvestimentosState.kt         # Estado dos investimentos
-│   ├── Modelos.kt                     # Data classes (Ativo, Ordem)
-│   ├── Componentes.kt                # Componentes reutilizáveis
-│   └── Formatacao.kt                 # Funções de formatação
-└── ui/theme/
-    ├── Theme.kt                       # Tema Material 3
-    ├── Color.kt                       # Paleta de cores
-    └── Type.kt                        # Tipografia
+Tela (Compose)  ──clique──►  State (InvestimentosState / CartaoState)
+                                   │  CoroutineScope(Dispatchers.IO).launch { ... }
+                                   ▼
+                               DAO (suspend fun)  ──►  AppDatabase (Room/SQLite, arquivo no aparelho)
+                                   │
+                                   ▼
+                       carregar() lê tudo de novo  ──►  State atualiza a lista  ──►  Tela redesenha
 ```
 
-### 🔄 Gerenciamento de Estado
+1. A tela chama um método do State (ex.: `adicionarAtivo`).
+2. O State grava no banco numa coroutine `Dispatchers.IO` (nunca na thread principal, senão a tela trava).
+3. Quando termina, o State chama `carregar()`, que faz `dao.buscarTodos()` e troca a lista.
+4. Como a lista é um `mutableStateOf`, o Compose redesenha sozinho.
+5. Ao abrir uma tela de lista, um `LaunchedEffect(Unit)` chama `carregar()` para ler o que já estava salvo.
 
-O app utiliza **três estados principais** criados em `CupBankApp` e compartilhados entre as telas:
+## 3. O que foi criado
 
-1. **`BancoState`** → Saldo e movimentos do extrato
-2. **`CartaoState`** → Transações do cartão
-3. **`InvestimentosState`** → Ativos e ordens de investimento
+### Arquivos novos
+| Arquivo | Conteúdo |
+|---|---|
+| `data/AppDatabase.kt` | Classe do banco (Singleton) + carga inicial dos dados de exemplo |
+| `data/Daos.kt` | `AtivoDao`, `OrdemDao`, `TransacaoCartaoDao`, `MovimentoDao` |
 
-Essa abordagem garante que:
-- ✅ O estado sobrevive à troca de abas
-- ✅ As telas ficam sincronizadas
-- ✅ O extrato reflete ações de PIX e pagamento de fatura
+### Arquivos alterados
+| Arquivo | O que mudou |
+|---|---|
+| `gradle/libs.versions.toml`, `build.gradle.kts`, `app/build.gradle.kts` | Plugin KSP + dependências do Room |
+| `investimentos/Modelos.kt` | `Ativo` e `Ordem` viraram `@Entity` (ganharam `id` autoincrement) |
+| `TelaCartao.kt` | `TransacaoCartao` virou `@Entity`; `CartaoState` usa o DAO; botão de editar; Detalhe busca por id |
+| `investimentos/InvestimentosState.kt` | Reescrito para usar `AtivoDao` e `OrdemDao` |
+| `investimentos/InvestirScreen.kt` | `LaunchedEffect` para buscar; menu Editar/Remover ao segurar um ativo |
+| `investimentos/DetalheAtivoScreen.kt` | Garante que os dados foram carregados antes de mostrar |
+| `CupBankApp.kt` | Abre o banco e entrega os DAOs aos States |
 
-### 🔗 Integração Entre Telas
+### Entities (tabelas)
+- `ativos`: id, ticker (único), nome, preco, variacao, tipo
+- `ordens`: id, ticker, quantidade, precoUnitario
+- `transacoes_cartao`: id, descricao, valor, data, categoria, pago
+- `movimentos` (Extrato): id, titulo, detalhe, valor, data
 
-| Ação | Impacto |
-|------|---------|
-| **Receber PIX** (Início) | ➜ Soma no saldo + cria movimento "PIX recebido" no Extrato |
-| **Enviar PIX** (PIX) | ➜ Valida saldo, debita valor + cria "PIX enviado" no Extrato |
-| **Pagar Fatura** (Cartão) | ➜ Debita saldo, quita transações + cria "Fatura do cartão" no Extrato |
+### DAOs
+Cada um tem `@Insert`, `@Query("SELECT * ...")`, `@Update`, `@Delete`, todos `suspend`. Extras:
+`buscarPorId` e `buscarPorTicker` (ativos), `deletarPorTicker` (ordens), `buscarPorId` (transações).
 
----
+### AppDatabase
+`@Database(entities = [...], version = 2)`, Singleton (`companion object` + `@Volatile` + `synchronized`).
+Um `Callback.onCreate` insere os dados de exemplo **uma única vez**, quando o arquivo do banco é criado.
 
-## 🛠️ Tecnologias Utilizadas
+## 4. O que cada ação faz no banco
 
-### Core
-- **[Kotlin 2.2.10](https://kotlinlang.org/)** - Linguagem de programação
-- **[Android Gradle Plugin 9.3.2](https://developer.android.com/build)** - Sistema de build
+| Ação na tela | Operação |
+|---|---|
+| Abrir Investir / Cartão | `buscarTodos()` |
+| "+ Investir" | `inserir(Ativo)` |
+| Segurar ativo → Editar | `atualizar(Ativo)` (o código não muda) |
+| Segurar ativo → Remover | `deletarPorTicker` nas ordens + `deletar(Ativo)` |
+| Confirmar compra | `inserir(Ordem)` |
+| Cancelar ordem | `deletar(Ordem)` |
+| "+" do cartão | `inserir(TransacaoCartao)` |
+| Lápis da transação | `atualizar(TransacaoCartao)` |
+| Lixeira da transação | `deletar(TransacaoCartao)` |
+| Pagar fatura | `atualizar` de cada transação pendente com `pago = true` + `inserir(Movimento)` no Extrato |
+| Receber PIX / Enviar PIX | `inserir(Movimento)`; o saldo é recalculado |
+| Abrir o app | `buscarTodos()` dos movimentos (saldo e Extrato) |
+| Abrir detalhe da transação | `buscarPorId(id)` (a rota só leva o id) |
 
-### UI & Design
-- **[Jetpack Compose](https://developer.android.com/jetpack/compose)** - Framework UI declarativo
-- **[Material 3](https://m3.material.io/)** - Sistema de design
-- **[Compose BOM 2026.02.01](https://developer.android.com/jetpack/compose/bom)** - Versionamento de bibliotecas Compose
+## 5. Mudanças de comportamento
 
-### Navegação
-- **[Navigation Compose 2.9.8](https://developer.android.com/jetpack/compose/navigation)** - Navegação entre telas
-- **Bottom Navigation Bar** - Navegação por abas
+- **Fatura do cartão** = soma das transações não pagas (antes era um número fixo de R$ 900). Abre com R$ 478,40.
+- **Patrimônio** = R$ 8.640,75 + soma das ordens salvas.
+- **Saldo** = R$ 376,80 (base) + soma dos movimentos do Extrato. Com os 3 movimentos de exemplo dá os R$ 3.284,50 de antes. Receber/enviar PIX e pagar fatura agora são salvos.
+- **Banco versão 2:** a tabela `movimentos` entrou por uma `Migration(1, 2)`, então quem já tinha o app instalado não perde os ativos e transações.
+- Erros de banco são capturados com `try/catch` e aparecem no Logcat com a tag `InvestimentosState` ou `CartaoState`.
 
-### Arquitetura & Estado
-- **[Compose State Management](https://developer.android.com/jetpack/compose/state)** - Gerenciamento de estado
-- **Single Source of Truth** - Estado centralizado
+## 6. Teste de aceitação
 
-### Bibliotecas AndroidX
-- **Core KTX 1.19.0** - Extensões Kotlin para Android
-- **Activity Compose 1.13.0** - Integração Activity + Compose
-- **Lifecycle Runtime KTX 2.11.0** - Ciclo de vida
+Adicionar um item → fechar o app **por completo** (tirar dos recentes) → abrir de novo → o item continua lá.
+Para voltar ao estado inicial: Android Studio → Device Explorer, ou "Clear storage" nas configurações do app.
 
-### Testes
-- **JUnit 4.13.2** - Testes unitários
-- **Espresso 3.7.0** - Testes de UI
-- **Compose UI Test** - Testes de componentes
+## 7. Se o projeto não roda
 
----
+Não consegui compilar o projeto no ambiente onde escrevi o código, então estes são os suspeitos, do mais provável ao menos:
 
-## 📚 Requisitos Acadêmicos Atendidos
-
-### ✅ Navegação
-- [x] **NavigationBar** com 4 abas + botão central "+"
-- [x] **NavHost** com 8 destinos configurados
-- [x] **Navegação por botões** usando `navController.navigate()`
-- [x] **TopAppBar** com botão de voltar em telas de detalhe
-- [x] **Argumentos de navegação** (ticker de ativo, ID de transação)
-
-### ✅ Listas e Cards
-- [x] **2 listas com LazyColumn + Card:**
-  - Lista de ativos de investimento
-  - Lista de transações do cartão
-- [x] **Adicionar itens** via formulários
-- [x] **Remover itens** (long press ou botão de exclusão)
-
-### ✅ Data Classes e Modelos
-- [x] **3 data classes criadas:**
-  - `Movimento` (extrato bancário) em `Banco.kt`
-  - `Ativo` + `Ordem` (investimentos) em `investimentos/Modelos.kt`
-  - `TransacaoCartao` (cartão de crédito) em `TelaCartao.kt`
-
-### ✅ Telas de Detalhe
-- [x] **2 telas de detalhamento:**
-  - Detalhe do Ativo (com cálculos complexos)
-  - Detalhe da Transação do Cartão
-- [x] **Busca de item por argumento de rota**
-- [x] **Complexidade extra:** Cálculos de patrimônio, peso na carteira, gestão de ordens
-
----
-
-## 🎓 Documentação do Processo (Trabalho Acadêmico)
-
-### 1. Evolução do Trabalho 1 para o Trabalho 2
-
-O projeto evoluiu de uma tela básica para um aplicativo completo com 8 telas integradas. Principais mudanças:
-- ✨ Implementação de navegação completa com `NavHost`
-- ✨ Criação de sistema de extrato bancário
-- ✨ Adição de módulo de investimentos
-- ✨ Gerenciamento de cartão de crédito
-- ✨ Integração entre todas as funcionalidades
-
-### 2. Justificativa das Telas
-
-| Tela | Justificativa |
-|------|---------------|
-| **Extrato** | Centraliza histórico de todas as transações (PIX, pagamentos, faturas) |
-| **Investir** | Lista dinâmica de ativos com CRUD completo |
-| **Detalhe do Ativo** | Exibe cálculos complexos e gestão de ordens |
-| **Cartão** | Gerencia transações de crédito com adição/remoção |
-| **Detalhe da Transação** | Mostra informações completas de cada gasto |
-| **PIX** | Formulário de transferência com validações |
-
-### 3. Decisões de Organização
-
-#### Estados Compartilhados
-- `BancoState`, `CartaoState` e `InvestimentosState` criados em `CupBankApp`
-- Garantem persistência ao trocar abas e integração entre telas
-
-#### Rotas Centralizadas
-- Objeto `Rotas` com constantes para todas as rotas
-- Facilita manutenção e evita erros de digitação
-
-#### Pacote Único
-- Todo código em `com.example.cupbank` (exceto `investimentos/`)
-- Simplifica navegação pelo código
-
-### 4. Complexidade Extra: Detalhe do Ativo
-
-A tela de detalhamento de ativo vai além do requisito mínimo:
-- 📊 **Cálculo de preço de abertura** baseado na variação percentual
-- 💰 **Valor da variação em reais**
-- 📈 **Peso na carteira** considerando todas as ordens
-- 🎯 **Gestão de ordens** direto na tela de detalhe
-- ✅ **Confirmação/cancelamento** que atualiza o patrimônio total
-
-### 5. Desafios e Soluções
-
-- **Desafio:** Sincronização de estado entre telas
-  - **Solução:** Estados elevados para `CupBankApp`
-
-- **Desafio:** Navegação com argumentos tipados
-  - **Solução:** Uso de `navArgument` com `NavType`
-
-- **Desafio:** Persistência de dados ao trocar abas
-  - **Solução:** `remember` no nível do `CupBankApp`
-
----
-
-## 📄 Licença
-
-Este projeto foi desenvolvido para fins acadêmicos.
-
----
-
-## 👥 Autores
-
-Desenvolvido como Trabalho 2 da disciplina de Desenvolvimento Mobile.
-
----
-
-## 📞 Suporte
-
-Para dúvidas ou problemas:
-1. Verifique a seção de **Solução de Problemas**
-2. Consulte a documentação oficial do [Jetpack Compose](https://developer.android.com/jetpack/compose)
-3. Revise os comentários no código-fonte
-
----
+1. **Gradle Sync falhou ao baixar plugin/biblioteca.** Precisa de internet. Veja a aba *Build* → mensagem em vermelho. Tente File → Sync Project with Gradle Files.
+2. **Erro mencionando `kotlin.sourceSets` / "built-in Kotlin"** (KSP com AGP 9). Opção 1: confira `ksp = "2.3.6"` em `libs.versions.toml`. Opção 2 (contorno conhecido): adicione `android.disallowKotlinSourceSets=false` ao `gradle.properties`.
+3. **Erro de versão do KSP/Kotlin** (ex.: "requires Kotlin ..."). O projeto usa Kotlin 2.2.10; se o erro apontar incompatibilidade, suba `kotlin` para 2.3.10 em `libs.versions.toml`, ou teste outra versão de `ksp`.
+4. **Erro vermelho em algum `.kt`** (Build → mensagem com arquivo e linha). Mande a linha que eu corrijo.
+5. **O app abre e fecha na hora (crash).** Veja o Logcat filtrando por `AndroidRuntime` ou `Room`. Se vier de um banco antigo com formato diferente, desinstale o app do emulador e rode de novo.
+6. **Ambiente:** JDK/Gradle desatualizado (o projeto usa Gradle 9.5.0, que o Android Studio atual baixa sozinho), ou pasta aberta errada (abrir a que tem o `settings.gradle.kts`).

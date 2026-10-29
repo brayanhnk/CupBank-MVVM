@@ -28,6 +28,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import android.util.Log
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import com.example.cupbank.data.TransacaoCartaoDao
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.material.icons.filled.Edit
 
 data class Cartao(
     val numero: String,
@@ -38,8 +47,9 @@ data class Cartao(
     val limiteDisponivel: Double
 )
 
+@Entity(tableName = "transacoes_cartao")
 data class TransacaoCartao(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val descricao: String,
     val valor: Double,
     val data: String,
@@ -54,50 +64,78 @@ private val AccentPurple = Color(0xFF7B5CFA)
 private val AccentGreen = Color(0xFF3DDC84)
 private val AccentRed = Color(0xFFFF4444)
 
-class CartaoState {
-    var cartao by mutableStateOf(
-        Cartao(
-            numero = "9010",
-            nomeTitular = "LUCAS SOUZA",
-            faturaAtual = 900.00,
-            dataVencimento = "10 de out.",
-            limiteTotal = 9000.00,
-            limiteDisponivel = 4500.00
-        )
+class CartaoState(private val dao: TransacaoCartaoDao) {
+
+    private val dadosDoCartao = Cartao(
+        numero = "9010",
+        nomeTitular = "LUCAS SOUZA",
+        faturaAtual = 0.0,
+        dataVencimento = "10 de out.",
+        limiteTotal = 9000.00,
+        limiteDisponivel = 4500.00
     )
+
+    var transacoes by mutableStateOf<List<TransacaoCartao>>(emptyList())
         private set
 
-    val transacoes = mutableStateListOf(
-        TransacaoCartao(1, "Supermercado Extra", 87.50, "05 de out.", "Alimentação"),
-        TransacaoCartao(2, "Uber", 25.00, "06 de out.", "Transporte"),
-        TransacaoCartao(3, "Netflix", 45.90, "07 de out.", "Entretenimento"),
-        TransacaoCartao(4, "Restaurante Bom Sabor", 120.00, "07 de out.", "Alimentação"),
-        TransacaoCartao(5, "Posto Shell", 200.00, "08 de out.", "Combustível")
-    )
+    val cartao: Cartao
+        get() = dadosDoCartao.copy(faturaAtual = transacoes.filter { !it.pago }.sumOf { it.valor })
 
     fun transacaoPorId(id: Int): TransacaoCartao? = transacoes.firstOrNull { it.id == id }
 
+    suspend fun carregar() {
+        try {
+            transacoes = dao.buscarTodos()
+        } catch (e: Exception) {
+            Log.e(TAG_CARTAO, "Erro ao carregar transações", e)
+        }
+    }
+
+    suspend fun buscarPorId(id: Int): TransacaoCartao? = withContext(Dispatchers.IO) {
+        try {
+            dao.buscarPorId(id)
+        } catch (e: Exception) {
+            Log.e(TAG_CARTAO, "Erro ao buscar transação $id", e)
+            null
+        }
+    }
+
+    private fun noBanco(operacao: suspend () -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                operacao()
+            } catch (e: Exception) {
+                Log.e(TAG_CARTAO, "Erro na operação do banco", e)
+            }
+            carregar()
+        }
+    }
+
     fun adicionar(descricao: String, valor: Double, data: String, categoria: String) {
-        val novoId = (transacoes.maxOfOrNull { it.id } ?: 0) + 1
-        transacoes.add(TransacaoCartao(novoId, descricao, valor, data, categoria))
-        cartao = cartao.copy(faturaAtual = cartao.faturaAtual + valor)
+        noBanco { dao.inserir(TransacaoCartao(descricao = descricao, valor = valor, data = data, categoria = categoria)) }
+    }
+
+    fun editar(id: Int, descricao: String, valor: Double, data: String, categoria: String): String {
+        val transacao = transacaoPorId(id) ?: return "Transação não encontrada"
+        if (transacao.pago) return "Transação já foi paga"
+        noBanco { dao.atualizar(transacao.copy(descricao = descricao, valor = valor, data = data, categoria = categoria)) }
+        return "Transação atualizada"
     }
 
     fun remover(id: Int): String {
         val transacao = transacaoPorId(id) ?: return "Transação não encontrada"
         if (transacao.pago) return "Transação já foi paga"
-        transacoes.remove(transacao)
-        cartao = cartao.copy(faturaAtual = cartao.faturaAtual - transacao.valor)
+        noBanco { dao.deletar(transacao) }
         return "Transação removida"
     }
 
     fun quitarFatura() {
-        cartao = cartao.copy(faturaAtual = 0.0)
-        for (i in transacoes.indices) {
-            transacoes[i] = transacoes[i].copy(pago = true)
-        }
+        val pendentes = transacoes.filter { !it.pago }
+        noBanco { pendentes.forEach { dao.atualizar(it.copy(pago = true)) } }
     }
 }
+
+private const val TAG_CARTAO = "CartaoState"
 
 @Composable
 fun TelaCartao(
@@ -108,6 +146,9 @@ fun TelaCartao(
 ) {
     val context = LocalContext.current
     var mostrarDialogAdicionar by remember { mutableStateOf(false) }
+    var transacaoParaEditar by remember { mutableStateOf<TransacaoCartao?>(null) }
+
+    LaunchedEffect(Unit) { state.carregar() }
 
     val pagarFatura: () -> Unit = {
         val valor = state.cartao.faturaAtual
@@ -130,11 +171,23 @@ fun TelaCartao(
         onRemoverTransacao = { id ->
             Toast.makeText(context, state.remover(id), Toast.LENGTH_SHORT).show()
         },
+        onEditarTransacao = { transacaoParaEditar = it },
         onClickTransacao = { onAbrirDetalhe(it.id) }
     )
 
+    transacaoParaEditar?.let { transacao ->
+        DialogTransacao(
+            inicial = transacao,
+            onDismiss = { transacaoParaEditar = null },
+            onConfirmar = { desc, valor, data, cat ->
+                Toast.makeText(context, state.editar(transacao.id, desc, valor, data, cat), Toast.LENGTH_SHORT).show()
+                transacaoParaEditar = null
+            }
+        )
+    }
+
     if (mostrarDialogAdicionar) {
-        DialogAdicionarTransacao(
+        DialogTransacao(
             onDismiss = { mostrarDialogAdicionar = false },
             onConfirmar = { desc, valor, data, cat ->
                 state.adicionar(desc, valor, data, cat)
@@ -405,6 +458,7 @@ private fun CartaoScreen(
     onPagarFatura: () -> Unit,
     onAdicionarTransacao: () -> Unit,
     onRemoverTransacao: (Int) -> Unit,
+    onEditarTransacao: (TransacaoCartao) -> Unit,
     onClickTransacao: (TransacaoCartao) -> Unit
 ) {
     Scaffold(
@@ -498,6 +552,7 @@ private fun CartaoScreen(
                         ItemTransacao(
                             transacao = transacao,
                             onClick = { onClickTransacao(transacao) },
+                            onEditar = { onEditarTransacao(transacao) },
                             onRemover = { onRemoverTransacao(transacao.id) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -514,6 +569,7 @@ private fun CartaoScreen(
 private fun ItemTransacao(
     transacao: TransacaoCartao,
     onClick: () -> Unit,
+    onEditar: () -> Unit,
     onRemover: () -> Unit
 ) {
     Card(
@@ -596,6 +652,17 @@ private fun ItemTransacao(
 
                 if (!transacao.pago) {
                     IconButton(
+                        onClick = onEditar,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Editar",
+                            tint = AccentPurple,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    IconButton(
                         onClick = onRemover,
                         modifier = Modifier.size(32.dp)
                     ) {
@@ -613,14 +680,16 @@ private fun ItemTransacao(
 }
 
 @Composable
-private fun DialogAdicionarTransacao(
+private fun DialogTransacao(
     onDismiss: () -> Unit,
-    onConfirmar: (String, Double, String, String) -> Unit
+    onConfirmar: (String, Double, String, String) -> Unit,
+
+    inicial: TransacaoCartao? = null
 ) {
-    var descricao by remember { mutableStateOf("") }
-    var valor by remember { mutableStateOf("") }
-    var data by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf("") }
+    var descricao by remember { mutableStateOf(inicial?.descricao ?: "") }
+    var valor by remember { mutableStateOf(inicial?.valor?.toString() ?: "") }
+    var data by remember { mutableStateOf(inicial?.data ?: "") }
+    var categoria by remember { mutableStateOf(inicial?.categoria ?: "") }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -633,7 +702,7 @@ private fun DialogAdicionarTransacao(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "Nova Transação",
+                    text = if (inicial == null) "Nova Transação" else "Editar Transação",
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
@@ -734,7 +803,7 @@ private fun DialogAdicionarTransacao(
                         colors = ButtonDefaults.buttonColors(containerColor = AccentPurple),
                         enabled = descricao.isNotBlank() && valor.toDoubleOrNull() != null && data.isNotBlank() && categoria.isNotBlank()
                     ) {
-                        Text("Adicionar")
+                        Text(if (inicial == null) "Adicionar" else "Salvar")
                     }
                 }
             }
@@ -748,18 +817,26 @@ fun TelaDetalheTransacao(
     state: CartaoState,
     onVoltar: () -> Unit
 ) {
-    val transacao = state.transacaoPorId(id)
-    if (transacao == null) {
+    var transacao by remember(id) { mutableStateOf<TransacaoCartao?>(null) }
+    var carregando by remember(id) { mutableStateOf(true) }
+
+    LaunchedEffect(id) {
+        transacao = state.buscarPorId(id)
+        carregando = false
+    }
+
+    val encontrada = transacao
+    if (encontrada != null) {
+        DetalheTransacaoConteudo(encontrada, onVoltar)
+    } else {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BackgroundColor),
             contentAlignment = Alignment.Center
         ) {
-            Text("Transação não encontrada", color = TextGray)
+            if (!carregando) Text("Transação não encontrada", color = TextGray)
         }
-    } else {
-        DetalheTransacaoConteudo(transacao, onVoltar)
     }
 }
 
