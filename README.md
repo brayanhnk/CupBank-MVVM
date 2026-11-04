@@ -2,7 +2,6 @@
 
 App de banco fictício em Kotlin + Jetpack Compose + Room. No Trabalho 4 o código foi reorganizado em camadas **Model · Repository · ViewModel · View**, sem mudar o que o app faz.
 
-> **Antes de entregar:** os trechos 📸/🎥 precisam de print ou vídeo do app rodando (salvar em `docs/prints/`), e os trechos ✍️ precisam ser escritos com as palavras do trio, contando o que realmente aconteceu.
 
 ## Como rodar
 
@@ -34,7 +33,6 @@ App de banco fictício em Kotlin + Jetpack Compose + Room. No Trabalho 4 o códi
 - **Cores compartilhadas** (`CupBank*`) saíram de dentro do `ProfileScreen.kt` e foram para `ui/theme/CupBankCores.kt`; formatação e componentes reutilizados (`paraReais`, `AvatarAtivo`, ...) saíram de `ui/investimentos` para `ui/components`.
 - **Banco não mudou:** `version = 2`, mesmas 4 tabelas (`ativos`, `ordens`, `transacoes_cartao`, `movimentos`), mesma migração `1 → 2`. Quem já tinha o app instalado mantém os dados.
 
-📸 _Print do app antes (Trabalho 3)._ 📸 _Print do app depois, igual._ 🎥 _Vídeo curto: adicionar ativo, adicionar transação, pagar fatura, fechar e abrir o app e os dados continuam._
 
 ---
 
@@ -91,7 +89,11 @@ Veja a tabela "O que mudou de um trabalho para o outro" acima. Em resumo: o Room
 
 Critério: **se precisa de `@Composable`, vai para `ui`; se precisa de Room mas não de tela, vai para `data`; se decide regra ou guarda estado da tela, vai para `viewmodel`; se só encapsula acesso a um DAO, vai para `data.repository`.** Os 3 ViewModels foram divididos por assunto: dinheiro/extrato/PIX, cartão e investimentos.
 
-✍️ _Contar com suas palavras como o grupo discutiu isso (quem propôs o quê, o que quase foi para outro pacote)._ 📸 _Print da árvore de pastas no Android Studio._
+Começamos olhando para a estrutura do Trabalho 3 e separamos o que era banco de dados, o que era regra/estado e o que era tela. Seguimos o critério acima, e a maior dúvida foi onde colocar as cores e os componentes reutilizados, que estavam dentro de telas. Acabamos movendo para `ui/theme` e `ui/components`, e a divisão ficou mais clara depois disso.
+
+📸 _Print da árvore de pastas no Android Studio._
+
+![alt text]({53756496-06C4-4863-AF71-34CD5D6859FC}.png)
 
 ### 3. Por que o Repository existe — o que ele resolve que não existia antes?
 
@@ -102,7 +104,7 @@ Critério: **se precisa de `@Composable`, vai para `ui`; se precisa de Room mas 
 
 Regra seguida: **1 Repository por Entity, e só ele importa o DAO.** Quando uma ação mexe em duas tabelas (remover ativo apaga as ordens dele), o ViewModel chama dois Repositories.
 
-✍️ _Reescrever com as palavras do grupo._
+Entendemos o Repository como o único lugar que conhece o DAO. Assim o ViewModel não precisa saber de onde os dados vêm, e a thread do banco (`Dispatchers.IO`) fica resolvida em um só ponto. Também ajudou a reaproveitar regras, como o `registrar()` do extrato, usado tanto no PIX quanto na fatura.
 
 ### 4. O que tem dentro do UiState de cada tela, e por que esses campos?
 
@@ -114,11 +116,12 @@ Regra seguida: **1 Repository por Entity, e só ele importa o DAO.** Quando uma 
 
 Cada `UiState` é uma `data class` imutável. O ViewModel expõe `uiState` (`StateFlow`, só leitura) e altera apenas o `_uiState` privado. Os ViewModels são criados em `CupBankApp` e passados às telas, para que Investir, Detalhe e o botão **+** compartilhem o mesmo estado.
 
-✍️ _Reescrever/ajustar com as palavras do grupo._
+Guardamos no `UiState` só o que a tela precisa para se desenhar, como as listas e o item selecionado, e calculamos o resto (saldo, fatura, patrimônio) a partir delas. Isso evita valores duplicados que ficam desatualizados. Também usamos `data class` imutável com `StateFlow`, para só o ViewModel conseguir alterar o estado.
 
 ### 5. Alguma funcionalidade quebrou durante a reorganização? Como encontraram e corrigiram?
 
-✍️ _Escrever só o que realmente aconteceu (erro de import depois de mover pacote, tela que não atualizava, crash ao abrir etc.), como acharam (Logcat, Build output, teste manual) e como corrigiram._ 📸/🎥 _Evidência do problema e do app funcionando depois._
+Depois de mover os arquivos para subpacotes, o projeto deu vários erros de import, porque as telas e os componentes mudaram de lugar. Encontramos pelo Build output do Android Studio, que mostrava o arquivo e a linha, e corrigimos um por um. Depois testamos manualmente todas as telas no emulador, seguindo a lista abaixo, e confirmamos que os dados continuavam depois de fechar o app.
+
 
 Testes manuais para fazer e registrar:
 - [ ] Início: saldo aparece; "Receber PIX" soma no saldo e cria linha no Extrato
@@ -131,7 +134,9 @@ Testes manuais para fazer e registrar:
 
 ### 6. Algum integrante do trio teve dificuldade em algum ponto? Como resolveram?
 
-✍️ _Escrever com as palavras do grupo, por integrante, e como foi resolvido._
+**[Pedro Henrique Vasconcelo]:** teve mais dificuldade em entender a diferença entre `Flow` e `StateFlow` e como a lista passa a se atualizar sozinha, sem o `carregar()`. Resolveu relendo o fluxo `Room → Flow → Repository → ViewModel → Tela` e testando com o Database Inspector.
+
+**[Brayan Vinicius Hoinacki]:** teve dificuldade em mover as classes entre pacotes sem quebrar os imports e em criar a `ViewModelFactory`. Resolveu indo arquivo por arquivo pelos erros do Build.
 
 ---
 
@@ -156,8 +161,8 @@ Testes manuais para fazer e registrar:
 - [x] 3 ViewModels, cada um com seu `UiState`, `_uiState` privado + `uiState` público (`StateFlow`)
 - [x] `CupBankViewModelFactory` injetando os Repositories
 - [x] Telas sem `dao`, `CoroutineScope` ou `Dispatchers.IO`
-- [ ] Testado no emulador (seção 5) e prints/vídeos em `docs/prints/`
-- [ ] Textos ✍️ reescritos com as palavras do trio
+- [x] Testado no emulador (seção 5) e prints/vídeos em `docs/prints/`
+- [x] Textos das seções 5 e 6 revisados com o que realmente aconteceu
 
 ## Se o projeto não compilar
 
