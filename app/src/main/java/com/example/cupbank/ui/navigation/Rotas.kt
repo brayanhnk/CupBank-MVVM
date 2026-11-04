@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.navigation
 
 object Rotas {
 

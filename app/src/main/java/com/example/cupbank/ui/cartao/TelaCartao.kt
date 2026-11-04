@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.cartao
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -28,34 +28,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import android.util.Log
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-import com.example.cupbank.data.TransacaoCartaoDao
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import androidx.compose.material.icons.filled.Edit
-
-data class Cartao(
-    val numero: String,
-    val nomeTitular: String,
-    val faturaAtual: Double,
-    val dataVencimento: String,
-    val limiteTotal: Double,
-    val limiteDisponivel: Double
-)
-
-@Entity(tableName = "transacoes_cartao")
-data class TransacaoCartao(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val descricao: String,
-    val valor: Double,
-    val data: String,
-    val categoria: String,
-    val pago: Boolean = false
-)
+import com.example.cupbank.data.Cartao
+import com.example.cupbank.data.TransacaoCartao
+import com.example.cupbank.viewmodel.CartaoViewModel
 
 private val BackgroundColor = Color(0xFF0D0E17)
 private val SurfaceDark = Color(0xFF1B1C29)
@@ -64,112 +40,29 @@ private val AccentPurple = Color(0xFF7B5CFA)
 private val AccentGreen = Color(0xFF3DDC84)
 private val AccentRed = Color(0xFFFF4444)
 
-class CartaoState(private val dao: TransacaoCartaoDao) {
-
-    private val dadosDoCartao = Cartao(
-        numero = "9010",
-        nomeTitular = "LUCAS SOUZA",
-        faturaAtual = 0.0,
-        dataVencimento = "10 de out.",
-        limiteTotal = 9000.00,
-        limiteDisponivel = 4500.00
-    )
-
-    var transacoes by mutableStateOf<List<TransacaoCartao>>(emptyList())
-        private set
-
-    val cartao: Cartao
-        get() = dadosDoCartao.copy(faturaAtual = transacoes.filter { !it.pago }.sumOf { it.valor })
-
-    fun transacaoPorId(id: Int): TransacaoCartao? = transacoes.firstOrNull { it.id == id }
-
-    suspend fun carregar() {
-        try {
-            transacoes = dao.buscarTodos()
-        } catch (e: Exception) {
-            Log.e(TAG_CARTAO, "Erro ao carregar transações", e)
-        }
-    }
-
-    suspend fun buscarPorId(id: Int): TransacaoCartao? = withContext(Dispatchers.IO) {
-        try {
-            dao.buscarPorId(id)
-        } catch (e: Exception) {
-            Log.e(TAG_CARTAO, "Erro ao buscar transação $id", e)
-            null
-        }
-    }
-
-    private fun noBanco(operacao: suspend () -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                operacao()
-            } catch (e: Exception) {
-                Log.e(TAG_CARTAO, "Erro na operação do banco", e)
-            }
-            carregar()
-        }
-    }
-
-    fun adicionar(descricao: String, valor: Double, data: String, categoria: String) {
-        noBanco { dao.inserir(TransacaoCartao(descricao = descricao, valor = valor, data = data, categoria = categoria)) }
-    }
-
-    fun editar(id: Int, descricao: String, valor: Double, data: String, categoria: String): String {
-        val transacao = transacaoPorId(id) ?: return "Transação não encontrada"
-        if (transacao.pago) return "Transação já foi paga"
-        noBanco { dao.atualizar(transacao.copy(descricao = descricao, valor = valor, data = data, categoria = categoria)) }
-        return "Transação atualizada"
-    }
-
-    fun remover(id: Int): String {
-        val transacao = transacaoPorId(id) ?: return "Transação não encontrada"
-        if (transacao.pago) return "Transação já foi paga"
-        noBanco { dao.deletar(transacao) }
-        return "Transação removida"
-    }
-
-    fun quitarFatura() {
-        val pendentes = transacoes.filter { !it.pago }
-        noBanco { pendentes.forEach { dao.atualizar(it.copy(pago = true)) } }
-    }
-}
-
-private const val TAG_CARTAO = "CartaoState"
-
 @Composable
 fun TelaCartao(
-    state: CartaoState,
-    banco: BancoState,
+    viewModel: CartaoViewModel,
     onAbrirDetalhe: (Int) -> Unit,
     onVoltar: () -> Unit
 ) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
     var mostrarDialogAdicionar by remember { mutableStateOf(false) }
     var transacaoParaEditar by remember { mutableStateOf<TransacaoCartao?>(null) }
 
-    LaunchedEffect(Unit) { state.carregar() }
-
     val pagarFatura: () -> Unit = {
-        val valor = state.cartao.faturaAtual
-        if (valor <= 0) {
-            Toast.makeText(context, "Não há fatura para pagar", Toast.LENGTH_SHORT).show()
-        } else if (!banco.pagarFatura(valor)) {
-            Toast.makeText(context, "Saldo insuficiente para pagar a fatura", Toast.LENGTH_SHORT).show()
-        } else {
-            state.quitarFatura()
-            Toast.makeText(context, "Fatura paga com sucesso!", Toast.LENGTH_SHORT).show()
-        }
+        Toast.makeText(context, viewModel.pagarFatura().mensagem, Toast.LENGTH_SHORT).show()
     }
 
     CartaoScreen(
-        cartao = state.cartao,
-        transacoes = state.transacoes,
+        cartao = uiState.cartao,
+        transacoes = uiState.transacoes,
         onVoltar = onVoltar,
         onPagarFatura = pagarFatura,
         onAdicionarTransacao = { mostrarDialogAdicionar = true },
         onRemoverTransacao = { id ->
-            Toast.makeText(context, state.remover(id), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, viewModel.remover(id), Toast.LENGTH_SHORT).show()
         },
         onEditarTransacao = { transacaoParaEditar = it },
         onClickTransacao = { onAbrirDetalhe(it.id) }
@@ -180,7 +73,7 @@ fun TelaCartao(
             inicial = transacao,
             onDismiss = { transacaoParaEditar = null },
             onConfirmar = { desc, valor, data, cat ->
-                Toast.makeText(context, state.editar(transacao.id, desc, valor, data, cat), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, viewModel.editar(transacao.id, desc, valor, data, cat), Toast.LENGTH_SHORT).show()
                 transacaoParaEditar = null
             }
         )
@@ -190,7 +83,7 @@ fun TelaCartao(
         DialogTransacao(
             onDismiss = { mostrarDialogAdicionar = false },
             onConfirmar = { desc, valor, data, cat ->
-                state.adicionar(desc, valor, data, cat)
+                viewModel.adicionar(desc, valor, data, cat)
                 Toast.makeText(context, "Transação adicionada", Toast.LENGTH_SHORT).show()
                 mostrarDialogAdicionar = false
             }
@@ -814,18 +707,14 @@ private fun DialogTransacao(
 @Composable
 fun TelaDetalheTransacao(
     id: Int,
-    state: CartaoState,
+    viewModel: CartaoViewModel,
     onVoltar: () -> Unit
 ) {
-    var transacao by remember(id) { mutableStateOf<TransacaoCartao?>(null) }
-    var carregando by remember(id) { mutableStateOf(true) }
+    val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(id) {
-        transacao = state.buscarPorId(id)
-        carregando = false
-    }
+    LaunchedEffect(id) { viewModel.carregarTransacao(id) }
 
-    val encontrada = transacao
+    val encontrada = uiState.transacaoDetalhe?.takeIf { it.id == id }
     if (encontrada != null) {
         DetalheTransacaoConteudo(encontrada, onVoltar)
     } else {
@@ -835,7 +724,7 @@ fun TelaDetalheTransacao(
                 .background(BackgroundColor),
             contentAlignment = Alignment.Center
         ) {
-            if (!carregando) Text("Transação não encontrada", color = TextGray)
+            if (!uiState.carregandoDetalhe) Text("Transação não encontrada", color = TextGray)
         }
     }
 }

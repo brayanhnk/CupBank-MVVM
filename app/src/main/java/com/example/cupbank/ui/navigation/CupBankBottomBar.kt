@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cupbank.ui.theme.CupBankPurpleLight
+import com.example.cupbank.ui.theme.CupBankTextSecondary
 
 private data class Aba(val rota: String, val rotulo: String, val icone: ImageVector)
 

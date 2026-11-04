@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.home
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -7,7 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import com.example.cupbank.investimentos.paraReais
+import com.example.cupbank.viewmodel.BancoViewModel
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cupbank.ui.components.paraReais
 
 private val BackgroundColor = Color(0xFF0D0E17)
 private val SurfaceDark = Color(0xFF1B1C29)
@@ -35,16 +36,17 @@ private val AccentOrange = Color(0xFFFFB020)
 
 @Composable
 fun BankAppScreen(
-    banco: BancoState,
+    viewModel: BancoViewModel,
     onAbrirPix: () -> Unit,
     onAbrirCartao: () -> Unit,
     onAbrirExtrato: () -> Unit
 ) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
 
     var valorPixTexto by remember { mutableStateOf("") }
     val focoValorPix = remember { FocusRequester() }
-    val ultimoMovimento = banco.movimentos.firstOrNull()
+    val ultimoMovimento = uiState.movimentos.firstOrNull()
 
     Scaffold(
         containerColor = BackgroundColor
@@ -90,7 +92,7 @@ fun BankAppScreen(
                     Text(text = "Saldo Disponível", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = banco.saldo.paraReais(),
+                        text = uiState.saldo.paraReais(),
                         color = Color.White,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
@@ -150,7 +152,7 @@ fun BankAppScreen(
                         onClick = {
                             val valor = valorPixTexto.replace(",", ".").toDoubleOrNull()
                             if (valor != null && valor > 0) {
-                                banco.receberPix("Maria Souza", valor)
+                                viewModel.receberPix("Maria Souza", valor)
                                 valorPixTexto = ""
                                 Toast.makeText(context, "PIX de R$ $valor recebido!", Toast.LENGTH_SHORT).show()
                             } else {
