@@ -1,4 +1,4 @@
-package com.example.cupbank.investimentos
+package com.example.cupbank.ui.investimentos
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +32,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,26 +42,34 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.cupbank.CupBankBackground
-import com.example.cupbank.CupBankField
-import com.example.cupbank.CupBankPurpleLight
-import com.example.cupbank.CupBankSurface
-import com.example.cupbank.CupBankTextPrimary
-import com.example.cupbank.CupBankTextSecondary
+import com.example.cupbank.data.Ordem
+import com.example.cupbank.viewmodel.InvestimentosViewModel
+import com.example.cupbank.ui.components.AvatarAtivo
+import com.example.cupbank.ui.components.CorNegativo
+import com.example.cupbank.ui.components.RotuloPequeno
+import com.example.cupbank.ui.components.SeletorQuantidade
+import com.example.cupbank.ui.components.corDaVariacao
+import com.example.cupbank.ui.theme.CupBankBackground
+import com.example.cupbank.ui.theme.CupBankField
+import com.example.cupbank.ui.theme.CupBankPurpleLight
+import com.example.cupbank.ui.theme.CupBankSurface
+import com.example.cupbank.ui.theme.CupBankTextPrimary
+import com.example.cupbank.ui.theme.CupBankTextSecondary
+import com.example.cupbank.ui.components.paraReais
+import com.example.cupbank.ui.components.paraPercentual
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalheAtivoScreen(
     ticker: String,
-    state: InvestimentosState,
+    viewModel: InvestimentosViewModel,
     onVoltar: () -> Unit
 ) {
     val context = LocalContext.current
-    val ativo = state.ativoPorTicker(ticker)
+    val uiState by viewModel.uiState.collectAsState()
+    val ativo = uiState.ativoPorTicker(ticker)
 
-    LaunchedEffect(Unit) { if (!state.carregado) state.carregar() }
-
-    LaunchedEffect(ticker, state.carregado) { if (state.ativoPorTicker(ticker) != null) state.selecionar(ticker) }
+    LaunchedEffect(ticker, uiState.carregado) { if (uiState.ativoPorTicker(ticker) != null) viewModel.selecionar(ticker) }
 
     Scaffold(
         containerColor = CupBankBackground,
@@ -87,7 +97,7 @@ fun DetalheAtivoScreen(
             )
         }
     ) { innerPadding ->
-        if (!state.carregado) {
+        if (!uiState.carregado) {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
         } else if (ativo == null) {
             Box(
@@ -99,12 +109,12 @@ fun DetalheAtivoScreen(
                 Text("Ativo não encontrado.", color = CupBankTextSecondary)
             }
         } else {
-            val quantidade = state.quantidade
+            val quantidade = uiState.quantidade
             val total = ativo.preco * quantidade
             val precoAbertura = ativo.preco / (1 + ativo.variacao / 100)
             val variacaoDia = (ativo.preco - precoAbertura) * quantidade
-            val pesoNaCarteira = total / (state.patrimonio + total) * 100
-            val ordensDoAtivo = state.ordens.filter { it.ticker == ativo.ticker }
+            val pesoNaCarteira = total / (uiState.patrimonio + total) * 100
+            val ordensDoAtivo = uiState.ordens.filter { it.ticker == ativo.ticker }
             val cotasNaCarteira = ordensDoAtivo.sumOf { it.quantidade }
             val valorNaCarteira = ordensDoAtivo.sumOf { it.total }
 
@@ -169,8 +179,8 @@ fun DetalheAtivoScreen(
                                 Text("Quantidade", color = CupBankTextPrimary, fontSize = 15.sp)
                                 SeletorQuantidade(
                                     quantidade = quantidade,
-                                    onDiminuir = { state.diminuirQuantidade() },
-                                    onAumentar = { state.aumentarQuantidade() }
+                                    onDiminuir = { viewModel.diminuirQuantidade() },
+                                    onAumentar = { viewModel.aumentarQuantidade() }
                                 )
                             }
                             Spacer(Modifier.height(8.dp))
@@ -207,7 +217,7 @@ fun DetalheAtivoScreen(
                     val cotas = if (quantidade == 1) "cota" else "cotas"
                     Button(
                         onClick = {
-                            state.confirmarCompra(ativo, quantidade)
+                            viewModel.confirmarCompra(ativo, quantidade)
                             Toast.makeText(
                                 context,
                                 "Compra de $quantidade $cotas de ${ativo.ticker} confirmada.",
@@ -251,7 +261,7 @@ fun DetalheAtivoScreen(
                         OrdemCard(
                             ordem = ordem,
                             onCancelar = {
-                                state.cancelarOrdem(ordem)
+                                viewModel.cancelarOrdem(ordem)
                                 Toast.makeText(context, "Ordem cancelada.", Toast.LENGTH_SHORT).show()
                             }
                         )

@@ -5,10 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import com.example.cupbank.Movimento
-import com.example.cupbank.TransacaoCartao
-import com.example.cupbank.investimentos.Ativo
-import com.example.cupbank.investimentos.Ordem
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AtivoDao {
@@ -16,7 +13,7 @@ interface AtivoDao {
     suspend fun inserir(ativo: Ativo)
 
     @Query("SELECT * FROM ativos ORDER BY id")
-    suspend fun buscarTodos(): List<Ativo>
+    fun buscarTodos(): Flow<List<Ativo>>
 
     @Update
     suspend fun atualizar(ativo: Ativo)
@@ -37,7 +34,7 @@ interface OrdemDao {
     suspend fun inserir(ordem: Ordem)
 
     @Query("SELECT * FROM ordens ORDER BY id DESC")
-    suspend fun buscarTodos(): List<Ordem>
+    fun buscarTodos(): Flow<List<Ordem>>
 
     @Update
     suspend fun atualizar(ordem: Ordem)
@@ -55,7 +52,7 @@ interface TransacaoCartaoDao {
     suspend fun inserir(transacao: TransacaoCartao)
 
     @Query("SELECT * FROM transacoes_cartao ORDER BY id")
-    suspend fun buscarTodos(): List<TransacaoCartao>
+    fun buscarTodos(): Flow<List<TransacaoCartao>>
 
     @Update
     suspend fun atualizar(transacao: TransacaoCartao)
@@ -65,6 +62,9 @@ interface TransacaoCartaoDao {
 
     @Query("SELECT * FROM transacoes_cartao WHERE id = :id")
     suspend fun buscarPorId(id: Int): TransacaoCartao?
+
+    @Query("UPDATE transacoes_cartao SET pago = 1 WHERE pago = 0")
+    suspend fun quitarPendentes()
 }
 
 @Dao
@@ -73,7 +73,7 @@ interface MovimentoDao {
     suspend fun inserir(movimento: Movimento)
 
     @Query("SELECT * FROM movimentos ORDER BY id DESC")
-    suspend fun buscarTodos(): List<Movimento>
+    fun buscarTodos(): Flow<List<Movimento>>
 
     @Update
     suspend fun atualizar(movimento: Movimento)

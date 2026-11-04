@@ -1,4 +1,4 @@
-package com.example.cupbank.investimentos
+package com.example.cupbank.ui.components
 
 import java.util.Locale
 

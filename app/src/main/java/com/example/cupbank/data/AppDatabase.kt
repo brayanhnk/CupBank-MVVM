@@ -6,10 +6,6 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.cupbank.Movimento
-import com.example.cupbank.TransacaoCartao
-import com.example.cupbank.investimentos.Ativo
-import com.example.cupbank.investimentos.Ordem
 
 @Database(
     entities = [Ativo::class, Ordem::class, TransacaoCartao::class, Movimento::class],

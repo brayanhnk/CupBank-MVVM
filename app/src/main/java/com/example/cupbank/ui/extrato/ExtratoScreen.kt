@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.extrato
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,18 +15,28 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.cupbank.investimentos.CorNegativo
-import com.example.cupbank.investimentos.CorPositivo
-import com.example.cupbank.investimentos.paraReais
+import com.example.cupbank.data.Movimento
+import com.example.cupbank.viewmodel.BancoViewModel
 import kotlin.math.abs
+import com.example.cupbank.ui.components.CorNegativo
+import com.example.cupbank.ui.components.CorPositivo
+import com.example.cupbank.ui.theme.CupBankBackground
+import com.example.cupbank.ui.theme.CupBankSurface
+import com.example.cupbank.ui.theme.CupBankTextPrimary
+import com.example.cupbank.ui.theme.CupBankTextSecondary
+import com.example.cupbank.ui.components.paraReais
 
 @Composable
-fun ExtratoScreen(banco: BancoState) {
+fun ExtratoScreen(viewModel: BancoViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -55,7 +65,7 @@ fun ExtratoScreen(banco: BancoState) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text("Saldo disponível", color = CupBankTextSecondary, fontSize = 13.sp)
                     Text(
-                        text = banco.saldo.paraReais(),
+                        text = uiState.saldo.paraReais(),
                         color = CupBankTextPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold
@@ -64,12 +74,12 @@ fun ExtratoScreen(banco: BancoState) {
             }
         }
 
-        if (banco.movimentos.isEmpty()) {
+        if (uiState.movimentos.isEmpty()) {
             item {
                 Text("Nenhuma movimentação ainda.", color = CupBankTextSecondary, fontSize = 13.sp)
             }
         } else {
-            items(banco.movimentos, key = { it.id }) { mov -> MovimentoCard(mov) }
+            items(uiState.movimentos, key = { it.id }) { mov -> MovimentoCard(mov) }
         }
     }
 }

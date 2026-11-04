@@ -1,0 +1,2 @@
+Coloque aqui os prints (.png) e vídeos curtos (.mp4) citados no README.md.
+Sugestão de nomes: 01-trabalho3-inicio.png, 02-estrutura-pacotes.png, 03-investir-adicionar.mp4, 04-cartao-pagar-fatura.mp4, 05-persistencia.mp4

@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.pix
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.cupbank.viewmodel.BancoViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,13 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val corFundo = Color(0xFF0E0E1A)
-val corCampo = Color(0xFF1C1C2E)
-val corRoxo = Color(0xFF6C4CE0)
-val corTextoCinza = Color(0xFF9A9AAE)
+private val corFundo = Color(0xFF0E0E1A)
+private val corCampo = Color(0xFF1C1C2E)
+private val corRoxo = Color(0xFF6C4CE0)
+private val corTextoCinza = Color(0xFF9A9AAE)
 
 @Composable
-fun TelaTransferenciaPix(banco: BancoState, onVoltar: () -> Unit) {
+fun TelaTransferenciaPix(viewModel: BancoViewModel, onVoltar: () -> Unit) {
     val context = LocalContext.current
 
     var abaSelecionada by remember { mutableStateOf("Chave PIX") }
@@ -157,7 +158,7 @@ fun TelaTransferenciaPix(banco: BancoState, onVoltar: () -> Unit) {
         Button(
             onClick = {
                 val valorNumerico = valor.replace("R$", "").trim().replace(",", ".").toDoubleOrNull()
-                val erro = banco.enviarPix(chavePix, valorNumerico, descricao)
+                val erro = viewModel.enviarPix(chavePix, valorNumerico, descricao)
                 if (erro == null) {
                     Toast.makeText(context, "PIX enviado! Veja no Extrato.", Toast.LENGTH_SHORT).show()
                     onVoltar()

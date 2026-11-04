@@ -1,4 +1,4 @@
-package com.example.cupbank.investimentos
+package com.example.cupbank.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,10 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.cupbank.CupBankField
-import com.example.cupbank.CupBankPurpleLight
-import com.example.cupbank.CupBankTextPrimary
-import com.example.cupbank.CupBankTextSecondary
+import com.example.cupbank.ui.theme.CupBankField
+import com.example.cupbank.ui.theme.CupBankPurpleLight
+import com.example.cupbank.ui.theme.CupBankTextPrimary
+import com.example.cupbank.ui.theme.CupBankTextSecondary
 
 val CorPositivo = Color(0xFF32D583)
 val CorNegativo = Color(0xFFF97066)

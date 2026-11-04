@@ -1,10 +1,9 @@
-package com.example.cupbank
+package com.example.cupbank.ui.navigation
 
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -16,23 +15,31 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.navArgument
-import com.example.cupbank.data.AppDatabase
-import com.example.cupbank.investimentos.DetalheAtivoScreen
-import com.example.cupbank.investimentos.InvestimentosState
-import com.example.cupbank.investimentos.InvestirScreen
+import com.example.cupbank.viewmodel.BancoViewModel
+import com.example.cupbank.viewmodel.CartaoViewModel
+import com.example.cupbank.viewmodel.CupBankViewModelFactory
+import com.example.cupbank.viewmodel.InvestimentosViewModel
+import com.example.cupbank.ui.cartao.TelaCartao
+import com.example.cupbank.ui.cartao.TelaDetalheTransacao
+import com.example.cupbank.ui.extrato.ExtratoScreen
+import com.example.cupbank.ui.home.BankAppScreen
+import com.example.cupbank.ui.investimentos.DetalheAtivoScreen
+import com.example.cupbank.ui.investimentos.InvestirScreen
+import com.example.cupbank.ui.perfil.ProfileScreen
+import com.example.cupbank.ui.pix.TelaTransferenciaPix
+import com.example.cupbank.ui.theme.CupBankBackground
 
 @Composable
 fun CupBankApp() {
     val navController = rememberNavController()
 
     val context = LocalContext.current
-    val db = remember { AppDatabase.getDatabase(context) }
-    val banco = remember { BancoState(db.movimentoDao()) }
-    val cartao = remember { CartaoState(db.transacaoCartaoDao()) }
-    val investimentos = remember { InvestimentosState(db.ativoDao(), db.ordemDao()) }
-
-    LaunchedEffect(Unit) { banco.carregar() }
+    val factory = remember { CupBankViewModelFactory.criar(context) }
+    val bancoViewModel: BancoViewModel = viewModel(factory = factory)
+    val cartaoViewModel: CartaoViewModel = viewModel(factory = factory)
+    val investimentosViewModel: InvestimentosViewModel = viewModel(factory = factory)
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val rotaAtual = backStackEntry?.destination?.route
@@ -46,7 +53,7 @@ fun CupBankApp() {
                 onMaisClick = {
 
                     navController.irParaAba(Rotas.INVESTIR)
-                    investimentos.mostrarNovoAtivo = true
+                    investimentosViewModel.abrirNovoAtivo()
                 }
             )
         }
@@ -60,7 +67,7 @@ fun CupBankApp() {
         ) {
             composable(Rotas.INICIO) {
                 BankAppScreen(
-                    banco = banco,
+                    viewModel = bancoViewModel,
                     onAbrirPix = { navController.navigate(Rotas.PIX) },
                     onAbrirCartao = { navController.navigate(Rotas.CARTAO) },
                     onAbrirExtrato = { navController.irParaAba(Rotas.EXTRATO) }
@@ -69,16 +76,16 @@ fun CupBankApp() {
 
             composable(Rotas.PIX) {
                 TelaTransferenciaPix(
-                    banco = banco,
+                    viewModel = bancoViewModel,
                     onVoltar = { navController.popBackStack() }
                 )
             }
 
-            composable(Rotas.EXTRATO) { ExtratoScreen(banco = banco) }
+            composable(Rotas.EXTRATO) { ExtratoScreen(viewModel = bancoViewModel) }
 
             composable(Rotas.INVESTIR) {
                 InvestirScreen(
-                    state = investimentos,
+                    viewModel = investimentosViewModel,
                     onAbrirDetalhe = { ticker ->
                         navController.navigate(Rotas.detalheAtivo(ticker))
                     }
@@ -92,7 +99,7 @@ fun CupBankApp() {
                 val ticker = entry.arguments?.getString(Rotas.ARG_TICKER).orEmpty()
                 DetalheAtivoScreen(
                     ticker = ticker,
-                    state = investimentos,
+                    viewModel = investimentosViewModel,
                     onVoltar = { navController.popBackStack() }
                 )
             }
@@ -103,8 +110,7 @@ fun CupBankApp() {
 
             composable(Rotas.CARTAO) {
                 TelaCartao(
-                    state = cartao,
-                    banco = banco,
+                    viewModel = cartaoViewModel,
                     onAbrirDetalhe = { id -> navController.navigate(Rotas.detalheTransacao(id)) },
                     onVoltar = { navController.popBackStack() }
                 )
@@ -117,7 +123,7 @@ fun CupBankApp() {
                 val id = entry.arguments?.getInt(Rotas.ARG_ID) ?: -1
                 TelaDetalheTransacao(
                     id = id,
-                    state = cartao,
+                    viewModel = cartaoViewModel,
                     onVoltar = { navController.popBackStack() }
                 )
             }

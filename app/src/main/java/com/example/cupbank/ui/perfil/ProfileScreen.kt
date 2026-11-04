@@ -1,4 +1,4 @@
-package com.example.cupbank
+package com.example.cupbank.ui.perfil
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -34,14 +34,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-val CupBankBackground = Color(0xFF0B1020)
-val CupBankSurface = Color(0xFF151C2D)
-val CupBankPurple = Color(0xFF6D3BFF)
-val CupBankPurpleLight = Color(0xFF8B63FF)
-val CupBankTextPrimary = Color(0xFFFFFFFF)
-val CupBankTextSecondary = Color(0xFF9BA3B5)
-val CupBankField = Color(0xFF202A3E)
+import com.example.cupbank.ui.theme.CupBankBackground
+import com.example.cupbank.ui.theme.CupBankPurple
+import com.example.cupbank.ui.theme.CupBankPurpleLight
+import com.example.cupbank.ui.theme.CupBankSurface
+import com.example.cupbank.ui.theme.CupBankTextPrimary
+import com.example.cupbank.ui.theme.CupBankTextSecondary
 
 @Composable
 fun ProfileScreen(onAbrirCartoes: () -> Unit) {
